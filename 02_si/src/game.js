@@ -32,14 +32,39 @@ function get2dContext(canvas_id){
 
 window.get2d = get2dContext;
 
-function handleKey(event) {
-  console.log("keyDown", event.key, event.code, event.keyCode);
+function handleKeyDown(event) {
+  console.log("keyown", event.key, event.code, event.keyCode);
   var gonnaPrevent = true;
   var keyMapping = {
   };
   var noop = ()=>{ gonnaPrevent = false; }
   (keyMapping[event.code] || noop)();
   if (gonnaPrevent) { event.preventDefault(); }
+}
+
+function handleMouseDown(event) {
+  gameState.input.clicked += 1;
+}
+
+function handleMouseMove(event) {
+  // console.log("mousemove", event.clientX, event.clientY);
+  var x = event.clientX / graphics.canvas.width;
+  var y = 1 - (event.clientY / graphics.canvas.height);
+  gameState.input.mouseLoc = [x, y];
+}
+
+function findMinMaxICreeps(swarm) {
+  var min = Infinity;
+  var max = -Infinity;
+  for (var i in _.range(swarm.number[0])) {
+    for (var j in _.range(swarm.number[1])) {
+      if (!swarm.dead.has(i+';'+j)) {
+        min = Math.min(min, i);
+        max = Math.max(max, i);
+      }
+    }
+  }
+  return [min, max];
 }
 
 function physics() {
@@ -49,13 +74,47 @@ function physics() {
     return;
   }
 
+  var ship = gameState.ship;
+  var swarm = gameState.swarm;
+
+
   var now = Date.now();
-  var ms_to_process = now - lastPhysicsTick;
 
-  while (now - lastPhysicsTick < physicsTickSize_ms) {
 
-    // DO STUFF
+  while ((now - lastPhysicsTick) > physicsTickSize_ms) {
 
+    // Animate existing shots
+    for (var shot of ship.shots) {
+      shot[1] += ship.shot_vel * physicsTickSize_ms / 1000;
+    }
+    ship.shots = ship.shots.filter(shot => shot[1] < 1.0);
+
+    // Now add new shot, if pending
+    ship.pos[0] = gameState.input.mouseLoc[0];  // TODO; replace this with velocity/acceleration stuff, blah blah
+    if (gameState.input.clicked > 0) {
+      gameState.input.clicked -= 1;
+      ship.shots.push(ship.pos.slice());
+      console.log(JSON.stringify(ship.shots));
+    }
+
+    // Animate Swarm
+    if (swarm.to_drop > 0) {
+      console.log(swarm.to_drop)
+      var dropPerFrame = swarm.drop_vel * physicsTickSize_ms / 1000;
+      var dropThisFrame = Math.min(swarm.to_drop, dropPerFrame);
+      swarm.pos[1] -= dropThisFrame;
+      swarm.to_drop -= (dropThisFrame + 0.00001);
+    } else {
+      swarm.pos[0] += swarm.x_vel * physicsTickSize_ms / 1000;
+      var [min_i, max_i] = findMinMaxICreeps(swarm);
+      var leftCreepCenter = calcCenterForCreep(min_i, 0, swarm);
+      var rightCreepCenter = calcCenterForCreep(max_i, 0, swarm);
+      console.log(leftCreepCenter[0], rightCreepCenter[0]);
+      if (leftCreepCenter[0] < swarm.creep_dim[0] || rightCreepCenter[0] > (1-swarm.creep_dim[0])) {
+        swarm.x_vel *= -1;
+        swarm.to_drop = swarm.drop_dist;
+      }
+    }
 
     gameState.dirty = true;
     lastPhysicsTick += physicsTickSize_ms;
@@ -94,6 +153,16 @@ function drawShip(ship) {
     graphics.lineTo(...fixCoords(x + coord[0], y + coord[1]));
   }
   graphics.fill();
+
+  graphics.strokeStyle = 'rgb(0, 255, 0)';
+  graphics.lineWidth = 2;
+  for (var shot of ship.shots) {
+    graphics.beginPath();
+    graphics.moveTo(...fixCoords(...shot));
+    graphics.lineTo(...fixCoords(shot[0], shot[1]+0.05));
+    graphics.stroke();
+
+  }
 }
 
 function calcCenterForCreep(i, j, swarm) {
@@ -155,15 +224,25 @@ function render() {
 function startGame(config) {
   graphics = get2dContext(config.canvasElementId);
   gameState = {
+    input: {
+      mouseLoc: [0.5, 0.5],
+      clicked: 0,
+    },
     ship: {
       pos: [0.5, 0.05],
+      vel: [0, 0],
       shape_path: [[-0.02, -0.01], [0, 0.01], [0.02, -0.01]],
+      shot_vel: 1.0,
       shots: [],
     },
     swarm: {
-      pos: [0.5, 0.75],
+      pos: [0.5, 0.85],
       number: [7, 4],
-      area: [0.99, 0.49],
+      area: [0.7, 0.3],
+      x_vel: 0.1,
+      drop_dist: 0.07,
+      drop_vel: 0.1,
+      to_drop: 0,
       dead: new Set(),
       shots: [],
       creep_dim: [0.04, 0.02],
@@ -172,7 +251,9 @@ function startGame(config) {
   };
   gameState.swarm.dead.add('1;1');
 
-  document.addEventListener("keydown", handleKey);
+  document.addEventListener("keydown", handleKeyDown);
+  graphics.canvas.addEventListener('mousemove', handleMouseMove);
+  graphics.canvas.addEventListener('mousedown', handleMouseDown);
   physics();
   render();
 }
