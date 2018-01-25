@@ -56,13 +56,10 @@ function handleMouseMove(event) {
 function findMinMaxICreeps(swarm) {
   var min = Infinity;
   var max = -Infinity;
-  for (var i in _.range(swarm.number[0])) {
-    for (var j in _.range(swarm.number[1])) {
-      if (!swarm.dead.has(i+';'+j)) {
-        min = Math.min(min, i);
-        max = Math.max(max, i);
-      }
-    }
+  for (var [i, j] of getCreepIds(swarm)) {
+    // TODO: now there's an easier way to do this
+    min = Math.min(min, i);
+    max = Math.max(max, i);
   }
   return [min, max];
 }
@@ -94,12 +91,37 @@ function physics() {
     if (gameState.input.clicked > 0) {
       gameState.input.clicked -= 1;
       ship.shots.push(ship.pos.slice());
-      console.log(JSON.stringify(ship.shots));
+      // console.log(JSON.stringify(ship.shots));
     }
+
+    var deadShots = new Set();
+    for (var shot of ship.shots) {
+      for (var [i, j] of getCreepIds(swarm)) {
+        var center = calcCenterForCreep(i, j, swarm);
+        var left = center[0] - swarm.creep_dim[0]/2.0;
+        var right = center[0] + swarm.creep_dim[0]/2.0;
+        var top = center[1] + swarm.creep_dim[1]/2.0;
+        var bottom = center[1] - swarm.creep_dim[1]/2.0;
+        if (shot[0] < right && shot[0] > left && (shot[1] + ship.shot_len) > bottom && shot[1] < top) {
+          if (!deadShots.has(shot.toString()) && !swarm.dead.has(i+';'+j)) {
+            deadShots.add(shot.toString());
+            swarm.dead.add(i+';'+j);
+          }
+        }
+      }
+    }
+    ship.shots = ship.shots.filter(shot => !deadShots.has(shot.toString()));
+
+    if (swarm.dead.size === swarm.number[0]*swarm.number[1]) {
+      swarm.dead = new Set();
+      swarm.pos = gameState.reset.swarm_pos.slice();
+      swarm.x_vel *= 1.1;     // ahahah speedup
+      gameState.score += 1;
+    }
+
 
     // Animate Swarm
     if (swarm.to_drop > 0) {
-      console.log(swarm.to_drop)
       var dropPerFrame = swarm.drop_vel * physicsTickSize_ms / 1000;
       var dropThisFrame = Math.min(swarm.to_drop, dropPerFrame);
       swarm.pos[1] -= dropThisFrame;
@@ -109,7 +131,6 @@ function physics() {
       var [min_i, max_i] = findMinMaxICreeps(swarm);
       var leftCreepCenter = calcCenterForCreep(min_i, 0, swarm);
       var rightCreepCenter = calcCenterForCreep(max_i, 0, swarm);
-      console.log(leftCreepCenter[0], rightCreepCenter[0]);
       if (leftCreepCenter[0] < swarm.creep_dim[0] || rightCreepCenter[0] > (1-swarm.creep_dim[0])) {
         swarm.x_vel *= -1;
         swarm.to_drop = swarm.drop_dist;
@@ -159,7 +180,7 @@ function drawShip(ship) {
   for (var shot of ship.shots) {
     graphics.beginPath();
     graphics.moveTo(...fixCoords(...shot));
-    graphics.lineTo(...fixCoords(shot[0], shot[1]+0.05));
+    graphics.lineTo(...fixCoords(shot[0], shot[1] + ship.shot_len));
     graphics.stroke();
 
   }
@@ -187,21 +208,27 @@ function fillCenteredRect(centerpoint, dimensions) {
   graphics.fillRect(...topLeft, ...fixDim);
 }
 
-function drawSwarm(swarm) {
+function getCreepIds(swarm) {
+  var ans = [];     // TODO: make this into a generator?
+  for (var i in _.range(swarm.number[0])) {
+    for (var j in _.range(swarm.number[1])) {
+      if (!swarm.dead.has(i + ';' + j)) {
+        ans.push([i, j]);
+      }
+    }
+  }
+  return ans;
+}
 
+function drawSwarm(swarm) {
   // // this is dummy code to visualize the entire swarm region in white
   // graphics.fillStyle = 'rgb(222, 222, 222)';
   // fillCenteredRect(swarm.pos, swarm.area);
 
   graphics.fillStyle = 'rgb(255, 0, 0)';
-  for (var i in _.range(swarm.number[0])) {
-    for (var j in _.range(swarm.number[1])) {
-      if (swarm.dead.has(i + ';' + j)) {
-        continue;
-      }
-      var centerpoint = calcCenterForCreep(i, j, swarm);
-      fillCenteredRect(centerpoint, swarm.creep_dim);
-    }
+  for (var [i, j] of getCreepIds(swarm)) {
+    var centerpoint = calcCenterForCreep(i, j, swarm);
+    fillCenteredRect(centerpoint, swarm.creep_dim);
   }
 }
 
@@ -223,7 +250,7 @@ function render() {
 
 function startGame(config) {
   graphics = get2dContext(config.canvasElementId);
-  gameState = {
+  window.gameState = gameState = {
     input: {
       mouseLoc: [0.5, 0.5],
       clicked: 0,
@@ -233,20 +260,25 @@ function startGame(config) {
       vel: [0, 0],
       shape_path: [[-0.02, -0.01], [0, 0.01], [0.02, -0.01]],
       shot_vel: 1.0,
+      shot_len: 0.05,
       shots: [],
+    },
+    reset: {
+      swarm_pos: [0.5, 0.85],
     },
     swarm: {
       pos: [0.5, 0.85],
-      number: [7, 4],
+      number: [11, 6],
       area: [0.7, 0.3],
-      x_vel: 0.1,
+      x_vel: 0.2,
       drop_dist: 0.07,
-      drop_vel: 0.1,
+      drop_vel: 0.3,
       to_drop: 0,
       dead: new Set(),
       shots: [],
       creep_dim: [0.04, 0.02],
     },
+    score: 0,
     dirty: true,
   };
   gameState.swarm.dead.add('1;1');
