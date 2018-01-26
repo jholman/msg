@@ -1,9 +1,9 @@
 import Game from './frame/Game';
 
-class Tetr extends Game {
+class Tetro extends Game {
   constructor(config) {
     super(config);
   }
 }
 
-export default Tetr;
+export default Tetro;

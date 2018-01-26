@@ -1,13 +1,13 @@
 require('./styles/main.scss');
 
 
-import Tetr from './Tetr';
+import Tetro from './Tetro';
 
-var t = new Tetr({
+var t = new Tetro({
   targetDiv: 'game-canvas',
 });
 t.start();      // I feel this shouldn't be necessary
 
-document.title = 'Tetr';
+document.title = 'Tetro';
 
 
