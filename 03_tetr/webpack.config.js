@@ -17,6 +17,7 @@ module.exports = {
   },
   module: {
     rules: [
+
       // https://webpack.js.org/loaders/babel-loader/
       {
         test: /\.jsx?$/,
@@ -27,12 +28,21 @@ module.exports = {
             presets: ['env', 'react', 'stage-2'],
             plugins: [
               "transform-decorators-legacy",
-              "transform-class-properties"
+              "transform-class-properties",
+              "transform-strict-mode",
             ]
 
           }
         }
       },
+
+//      // https://webpack.js.org/loaders/eslint-loader/
+//      {
+//        test: /\.jsx?$/,
+//        exclude: /node_modules/,
+//        use: ['babel-loader', 'eslint-loader'],
+//      },
+
       // https://webpack.js.org/loaders/sass-loader/
       {
         test: /\.scss$/,
