@@ -72,15 +72,15 @@ function physics() {
       .map(segment => segment.x === newHeadPos.x && segment.y === newHeadPos.y)
       .reduce((acc, next) => acc || next, false);
 
-    if (collide) {
-      gameState.collided = true;
-      // TODO: working here
-    } else {
+//    if (collide) {
+//      gameState.collided = true;
+//      // TODO: working here
+//    } else {
       snake.pos.unshift(newHeadPos);
       if (snake.pos.length > snake.targetLength) {
         snake.pos.pop();
       }
-    }
+//    }
 
     gameState.dirty = true;
     ms_to_process -= snake.movePeriod_ms;
