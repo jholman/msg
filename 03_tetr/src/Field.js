@@ -23,6 +23,7 @@ class Field {
       points: 0,
       lines: 0,
     }
+    this.animationPreempt = undefined;
     this.untilGravity = 1000;
   }
 
@@ -30,12 +31,18 @@ class Field {
     return 1000 / (this.score.level || 1);
   }
 
+  gravityHappened() {
+    this.untilGravity = this.calcGravityInterval();
+  }
+
   physics_tick(tick_size) {
     this.untilGravity -= tick_size;
+    //console.log(this.untilGravity);
     if (this.untilGravity < 0) {
       this.fall();
-      this.untilGravity = this.calcGravityInterval();
+      this.gravityHappened();
     }
+
   }
 
   render(context, xoff, yoff) {
@@ -51,13 +58,24 @@ class Field {
       }
     }
 
-    this.currPiece.render(context, xoff, yoff, cell_scale);
+    this.currPiece.render(context, xoff, yoff, cell_scale, 0);
   }
 
   renderPreview(context, xoff, yoff) {
     context.fillStyle = 'black';
     context.fillRect(xoff, yoff, cell_scale * 6, cell_scale * 6);
-    this.nextPiece.render(context, xoff + 3 * cell_scale, yoff + 3 * cell_scale, cell_scale);     // TODO: auto-center every piece
+    var extrema = this.nextPiece.getExtremeCoords();
+    var x_adjust = (extrema.xmin + extrema.xmax) / 2;
+    var y_adjust = (extrema.ymin + extrema.ymax) / 2;
+    console.log(JSON.stringify(extrema), x_adjust, y_adjust);
+    this.nextPiece.render(context, xoff + (2.5 - x_adjust) * cell_scale, yoff + (2.5 - y_adjust) * cell_scale, cell_scale);
+  }
+
+  renderScore(context, xoff, yoff) {
+    context.fillStyle = 'black';
+    context.fillRect(xoff, yoff, 120, 80);
+    var scoreDiv = document.getElementById("score");
+    scoreDiv.innerHTML = JSON.stringify(this.score);
   }
 
   compactFromLine(y) {
@@ -79,12 +97,19 @@ class Field {
     //console.log("deadField:", JSON.stringify(this.deadField));
   }
 
-  scoreLines(n) {
-    console.log("cleared", n, "lines!");
+  applyScore(lines, dropDistance) {
+    lines = lines || 0;
+    this.score.points += lines * (100 + dropDistance);      // also got dropDistance*1 from the softDrop, I guess
+    console.log("added some points:", lines * 100 + (lines + 1) * dropDistance, "(dd:", dropDistance, ")");
+    if (lines) {
+      this.score.lines += lines;
+      this.score.level = Math.ceil(this.score.lines/10);
+      console.log("cleared", lines, "lines!", JSON.stringify(this.score));
+    }
   }
 
   // TODO: this should animate somehow
-  clearCompleteRows() {
+  clearCompleteRows(skipLinesForScoring) {
     var removeCount = 0;
     for (var y in _.range(20)) {
       var gap = false;
@@ -103,20 +128,25 @@ class Field {
       }
     }
     if (removeCount) {
-      this.scoreLines(removeCount);
+      this.applyScore(removeCount, skipLinesForScoring);
     }
   }
 
-  fall() {
+  advanceNextPiece(skipLinesForScoring) {
+    for (var element of this.currPiece.getElements()) {
+      this.deadField[key(element[0], element[1])] = this.currPiece.color;
+    }
+    this.clearCompleteRows(skipLinesForScoring);
+    this.currPiece = this.nextPiece;
+    this.currPiece.loc = [5, -1];
+    this.nextPiece = this.piecemaker.next();
+  }
+
+  fall(skipLinesForScoring) {
     var didFall = this.oneDrop();
     if (!didFall) {
-      for (var element of this.currPiece.getElements()) {
-        this.deadField[key(element[0], element[1])] = this.currPiece.color;
-      }
-      this.clearCompleteRows();
-      this.currPiece = this.nextPiece;
-      this.currPiece.loc = [5, -1];
-      this.nextPiece = this.piecemaker.next();
+      this.advanceNextPiece(skipLinesForScoring || 0);
+      this.gravityHappened();
     }
     return didFall;
   }
@@ -126,12 +156,28 @@ class Field {
   }
 
   softDrop() {
-    while (this.oneDrop()) ;
+    var dropped = 0;
+    while (true) {
+      if (this.oneDrop()) {
+        dropped++;
+      } else {
+        break;
+      }
+    }
+    // If the player soft-drops, restart the gravity countdown, but ONLY if they
+    //  piece actually fell some distance, because otherwise they could pause
+    //  at the bottom by spamming the softdrop key
+    if (dropped) {
+      this.gravityHappened();
+      this.applyScore(0, dropped);
+    }
+    return dropped;
   }
 
   hardDrop() {
-    this.softDrop();
-    this.fall();
+    var dropped = this.softDrop();
+    var completed = this.fall(dropped);
+    return dropped;
   }
 
   tryNewPosition(elements, vec) {

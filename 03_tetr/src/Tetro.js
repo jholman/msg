@@ -29,7 +29,7 @@ class Tetro extends Game {
       KeyD: () => { this.p1field.tryMove([1, 0]); },
       KeyW: () => { this.p1field.tryRot(1); },
       KeyS: () => { this.p1field.tryRot(-1); },
-      KeyZ: () => { this.p1field.fall(); },
+      KeyZ: () => { this.p1field.oneDrop(); },
       KeyX: () => { this.p1field.softDrop(); },
       KeyC: () => { this.p1field.hardDrop(); },
     };
@@ -45,6 +45,7 @@ class Tetro extends Game {
 
     this.p1field.render(context, 50, 50);
     this.p1field.renderPreview(context, 280, 50);
+    this.p1field.renderScore(context, 280, 200);
   }
 
   physics_tick(tick_size) {

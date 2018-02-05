@@ -101,6 +101,12 @@ class Game {
     if (!this.bookkeeping.previousTick_ms) {
       this.bookkeeping.previousTick_ms = now - this.config.physics.tickSize_ms;
     }
+    const maxTicksAtOnce = 50;
+    if ((now - this.bookkeeping.previousTick_ms) > (maxTicksAtOnce * this.config.physics.tickSize_ms)) {
+
+      console.error("skipping some tick-time to avoid lockup");
+      this.bookkeeping.previousTick_ms = now - (maxTicksAtOnce * this.config.physics.tickSize_ms);
+    }
     while ((now - this.bookkeeping.previousTick_ms) > this.config.physics.tickSize_ms) {
       this.physics_tick(this.config.physics.tickSize_ms);
       this.bookkeeping.previousTick_ms += this.config.physics.tickSize_ms;
