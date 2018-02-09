@@ -38,11 +38,6 @@ const pieceColors = {
   T: 'purple',
 }
 
-function pieceDataCleanup(raw) {
-}
-
-//const pieceData = pieceDataCleanup(raw);
-
 const pieceData = {
   O: { 
     elements: [
@@ -78,7 +73,19 @@ const pieceData = {
       [[ 0,  0], [ 0, -1], [ 0,  1], [ 1,  0] ],
       [[ 0,  0], [ 0,  1], [-1,  0], [ 1,  0] ],
     ],
-  }
+  },
+  S: {
+    elements: [
+      [[ 0,  0], [ 0, -1], [ 1, -1], [-1,  0] ],
+      [[ 0,  0], [ 0, -1], [ 1,  0], [ 1,  1] ],
+    ]
+  },
+  Z: {
+    elements: [
+      [[ 0,  0], [ 0, -1], [-1, -1], [ 1,  0] ],
+      [[ 0,  0], [ 0, -1], [-1,  0], [-1,  1] ],
+    ]
+  },
 
 }
 

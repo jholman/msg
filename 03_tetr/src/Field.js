@@ -5,6 +5,7 @@ import Piecemaker from './Piecemaker';
 const cell_scale = 20;
 const WIDTH = 10;
 const HEIGHT = 20;
+const clearTime_ms = 600;
 
 function key(x, y) {
   return x + ';' + y;
@@ -23,8 +24,10 @@ class Field {
       points: 0,
       lines: 0,
     }
-    this.animationPreempt = undefined;
+    this.physicsMode = 'gravity';
     this.untilGravity = 1000;
+    this.clearingData = {
+    };
   }
 
   calcGravityInterval() {
@@ -36,11 +39,26 @@ class Field {
   }
 
   physics_tick(tick_size) {
-    this.untilGravity -= tick_size;
-    //console.log(this.untilGravity);
-    if (this.untilGravity < 0) {
-      this.fall();
-      this.gravityHappened();
+    switch (this.physicsMode) {
+      case 'gravity':
+        this.untilGravity -= tick_size;
+        if (this.untilGravity < 0) {
+          this.fall();
+          this.gravityHappened();
+        }
+        break;
+      case 'lineclear':
+        this.clearingData.timeleft -= tick_size;
+        if (this.clearingData.timeleft < 0) {
+          for (var y of this.clearingData.lines) {
+            for (var x in _.range(10)) {
+              delete this.deadField[key(x, y)];
+            }
+            this.compactFromLine(y);
+          }
+          this.physicsMode = 'gravity';
+          this.gravityHappened();
+        }
     }
 
   }
@@ -67,7 +85,7 @@ class Field {
     var extrema = this.nextPiece.getExtremeCoords();
     var x_adjust = (extrema.xmin + extrema.xmax) / 2;
     var y_adjust = (extrema.ymin + extrema.ymax) / 2;
-    console.log(JSON.stringify(extrema), x_adjust, y_adjust);
+    // console.log(JSON.stringify(extrema), x_adjust, y_adjust);
     this.nextPiece.render(context, xoff + (2.5 - x_adjust) * cell_scale, yoff + (2.5 - y_adjust) * cell_scale, cell_scale);
   }
 
@@ -97,20 +115,21 @@ class Field {
     //console.log("deadField:", JSON.stringify(this.deadField));
   }
 
-  applyScore(lines, dropDistance) {
+  applyScore(lines, dropDistance, subdivided = false) {
+    var scoreToAdd = dropDistance;
     lines = lines || 0;
-    this.score.points += lines * (100 + dropDistance);      // also got dropDistance*1 from the softDrop, I guess
-    console.log("added some points:", lines * 100 + (lines + 1) * dropDistance, "(dd:", dropDistance, ")");
     if (lines) {
-      this.score.lines += lines;
-      this.score.level = Math.ceil(this.score.lines/10);
-      console.log("cleared", lines, "lines!", JSON.stringify(this.score));
+      var sqLines = lines * lines;
+      scoreToAdd += sqLines * (100 + dropDistance);
     }
+    //console.log(`added <<${scoreToAdd}>> points (l: ${lines}, dd: ${dropDistance})`);
+    this.score.points += scoreToAdd;
+    this.score.lines += lines;
+    this.score.level = Math.ceil(this.score.lines/10);
   }
 
-  // TODO: this should animate somehow
   clearCompleteRows(skipLinesForScoring) {
-    var removeCount = 0;
+    var linesToClear = [];
     for (var y in _.range(20)) {
       var gap = false;
       for (var x in _.range(10)) {
@@ -120,16 +139,22 @@ class Field {
         }
       }
       if (!gap) {
-        for (var x in _.range(10)) {
-          delete this.deadField[key(x, y)];
-        }
-        this.compactFromLine(y);
-        removeCount++;
+        linesToClear.push(y);
       }
     }
-    if (removeCount) {
-      this.applyScore(removeCount, skipLinesForScoring);
+    if (linesToClear.length) {
+      this.physicsMode = 'lineclear';
+      for (var y of linesToClear) {
+        for (var x in _.range(10)) {
+          this.deadField[key(x, y)] = 'white';
+        }
+      }
+      this.clearingData = {
+        timeleft: clearTime_ms,
+        lines: linesToClear,
+      };
     }
+    this.applyScore(linesToClear.length, skipLinesForScoring, true);
   }
 
   advanceNextPiece(skipLinesForScoring) {
@@ -142,31 +167,36 @@ class Field {
     this.nextPiece = this.piecemaker.next();
   }
 
-  fall(skipLinesForScoring) {
-    var didFall = this.oneDrop();
+  fall(dropDistanceForScoring = 0) {      // called by gravity, or by hardDrop, or by oneDrop
+    var didFall = this.tryMove([0, 1]);
     if (!didFall) {
-      this.advanceNextPiece(skipLinesForScoring || 0);
+      this.advanceNextPiece(dropDistanceForScoring);
       this.gravityHappened();
     }
     return didFall;
   }
 
-  oneDrop() {
-    return this.tryMove([0, 1]);
+  oneDrop() {             // pressable key
+    return this.fall(0);
   }
 
-  softDrop() {
+  multiDrop() {             // pressable key
     var dropped = 0;
     while (true) {
-      if (this.oneDrop()) {
+      if (this.tryMove([0, 1])) {
         dropped++;
       } else {
         break;
       }
     }
+    return dropped;
+  }
+
+  softDrop() {              // pressable key
     // If the player soft-drops, restart the gravity countdown, but ONLY if they
     //  piece actually fell some distance, because otherwise they could pause
     //  at the bottom by spamming the softdrop key
+    var dropped = this.multiDrop();
     if (dropped) {
       this.gravityHappened();
       this.applyScore(0, dropped);
@@ -175,7 +205,7 @@ class Field {
   }
 
   hardDrop() {
-    var dropped = this.softDrop();
+    var dropped = this.multiDrop();
     var completed = this.fall(dropped);
     return dropped;
   }
