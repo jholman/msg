@@ -33,7 +33,6 @@ function get2dContext(canvas_id){
 window.get2d = get2dContext;
 
 function handleKeyDown(event) {
-  console.log("keyown", event.key, event.code, event.keyCode);
   var gonnaPrevent = true;
   var keyMapping = {
   };
@@ -47,7 +46,6 @@ function handleMouseDown(event) {
 }
 
 function handleMouseMove(event) {
-  // console.log("mousemove", event.clientX, event.clientY);
   var x = event.clientX / graphics.canvas.width;
   var y = 1 - (event.clientY / graphics.canvas.height);
   gameState.input.mouseLoc = [x, y];
@@ -79,7 +77,6 @@ function physics() {
 
 
   while ((now - lastPhysicsTick) > physicsTickSize_ms) {
-
     // Animate existing shots
     for (var shot of ship.shots) {
       shot[1] += ship.shot_vel * physicsTickSize_ms / 1000;
@@ -141,7 +138,7 @@ function physics() {
     lastPhysicsTick += physicsTickSize_ms;
   }
 
-  setTimeout(physics, physicsTickSize_ms - lastPhysicsTick);      // infinite recurse
+  setTimeout(physics, physicsTickSize_ms - (now - lastPhysicsTick));      // infinite recurse
 }
 
 
