@@ -3,23 +3,22 @@ import autobind from 'autobind-decorator';
 @autobind
 class Menu {
   constructor(config) {
+    this.bgcolor = 'rgba(0, 0, 0, 0.5)';
     this.options = {
       main: { 
-        parentState: undefined,
-        bgcolor: 'black',
         options: [
-          {text: 'Resume', color: 'orange', newState: undefined},
-          {text: 'Change Level', color: 'yellow', newState: 'levelSelect'},
+          {text: 'Resume', color: 'orange', newState: undefined, action: () => this.popMenuState()},
+          {text: 'Full Screen', color: 'orange', action: () => this.tryToggleFullScreen()},
+          {text: 'Change Level', color: 'orange', newState: 'levelSelect'},
         ]
       },
       levelSelect: {
-        parentState: 'main',
-        bgcolor: 'yellow',
         options: [
-          {text: 'Level 1', color: 'seagreen', newState: undefined, action: () => this.levelChange(1)},
-          {text: 'Level 2', color: 'darkolivegreen', newState: undefined, action: () => this.levelChange(2)},
+          {text: 'Back',    color: 'green', newState: undefined, action: () => this.popMenuState()},
+          {text: 'Level 1', color: 'green', newState: undefined, action: () => this.levelChange(1)},
+          {text: 'Level 2', color: 'green', newState: undefined, action: () => this.levelChange(2)},
           {text: 'Level 3', color: 'green', newState: undefined, action: () => this.levelChange(3)},
-          {text: 'Level 4', color: 'lawngreen', newState: undefined, action: () => this.levelChange(4)},
+          {text: 'Level 4', color: 'green', newState: undefined, action: () => this.levelChange(4)},
         ]
       },
       
@@ -32,7 +31,11 @@ class Menu {
   handleKeydown(event) {
     var keyMapping = {
       Escape: () => { this.popMenuState(); },
-      Enter: () => { this.pushMenuState(this.options[this.state].options[this.stateIndex].newState) },
+      Enter: () => {
+        var menuEntry = this.options[this.state].options[this.stateIndex];
+        if (menuEntry.newState) { this.pushMenuState(menuEntry.newState); }
+        if (menuEntry.action) { menuEntry.action(); }
+      },
       ArrowDown: () => { this.incStateIndex(); },
       ArrowUp: () => { this.incStateIndex(-1); },
     };
@@ -49,6 +52,11 @@ class Menu {
   }
 
   levelChange(newLevelId) {
+    // TODO: do something, probably involving a callback from the Maria that owns this Overlay/Menu
+  }
+
+  tryToggleFullScreen() {
+    // TODO: do something, probably involving a callback from the Maria that owns this Overlay/Menu
   }
 
   pushMenuState(newState, newIndex = 0) {
@@ -95,25 +103,26 @@ class Menu {
     var menu = this.options[this.state];
     if (menu === undefined) return;
     var midpoint = [context.canvas.width / 2, context.canvas.height / 2];
-    var lineHeight = 20;
-    var lineLength = 200;
+    var lineHeight = 40;
+    var lineLength = lineHeight * 10;
     var menuDim = [ lineLength + 2 * lineHeight, lineHeight * 1.5 * (menu.options.length+1) ];
     var mainLeft = midpoint[0] - menuDim[0] / 2;
     var mainTop = midpoint[1] - menuDim[1] / 2;
 
-    context.fillStyle = menu.bgcolor;
+    context.fillStyle = menu.bgcolor || this.bgcolor;
     context.fillRect(mainLeft, mainTop, menuDim[0], menuDim[1]);
+    context.font = lineHeight + 'px sans-serif';
+
     for (var optIndex in menu.options) {
       var option = menu.options[optIndex];
       var itemTop = mainTop + lineHeight + (optIndex * lineHeight * 1.5);
       var itemLeft = mainLeft + lineHeight;
       if (optIndex === this.stateIndex.toString()) {
-        var borderWidth = 2;
         context.fillStyle = 'white';
-        context.fillRect(itemLeft - borderWidth, itemTop - borderWidth, lineLength + 2*borderWidth, lineHeight+2*borderWidth);
+      } else {
+        context.fillStyle = 'black';
       }
-      context.fillStyle = option.color;
-      context.fillRect(itemLeft, itemTop, lineLength, lineHeight);
+      context.fillText(option.text, itemLeft, itemTop + lineHeight, lineLength);
     }
   }
 }

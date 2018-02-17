@@ -10,6 +10,8 @@ class Maria extends Game {
   constructor(config) {
     super(config);
 
+    this.context.canvas.width = 800;
+    this.context.canvas.height = 600;
 
     this.overlay = new Overlay({onLevelChange: this.setLevel});
     this.main = new LevelBoard();
