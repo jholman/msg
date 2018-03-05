@@ -1,10 +1,12 @@
 {
-  "name": "Super Maria Sisters",
+  "name": "SuperMariaSisters",
   "version": "0.1",
   "author": "Jeremy Holman <jeremy.holman@gmail.com>",
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
+    "test": "./node_modules/.bin/mocha",
+    "test-watch": "./node_modules/.bin/mocha --watch",
     "start": "./node_modules/.bin/webpack-dev-server",
     "build": "./node_modules/.bin/webpack"
   },
@@ -16,17 +18,17 @@
     "babel-preset-env": "^1.6.1",
     "babel-preset-react": "^6.24.1",
     "babel-preset-stage-0": "^6.24.1",
+    "chai": "^4.1.2",
     "css-loader": "^0.28.5",
     "jquery": "^3.2.1",
     "lodash": "^4.17.4",
+    "mocha": "^5.0.1",
     "node-sass": "^4.5.3",
     "react": "^15.6.1",
     "react-dom": "^15.6.1",
     "sass-loader": "^6.0.6",
     "style-loader": "^0.18.2",
-    "webpack": "^3.5.5"
-  },
-  "devDependencies": {
+    "webpack": "^3.5.5",
     "webpack-dev-server": "^2.7.1"
   }
 }
