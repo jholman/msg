@@ -29,14 +29,12 @@ class Maria extends Game {
     this.main = new LevelBoard({levelData: levels[1]});
   }
 
-  handleKeydown(event) {
-    //console.log("keypress:", event.key, event.code, event.keyCode, event);
-    if ( {J:1, I:1}[event.key] && event.ctrlKey ) return;     // so that dev tool hotkeys still work and have priority
-    var gotConsumed = this.overlay.handleKeydown(event) || this.main.handleKeydown(event);
+  handleKey(event) {
+    var gotConsumed = this.overlay.handleKey(event) || this.main.handleKey(event);
     if (gotConsumed) {
       event.preventDefault();
     } else {
-      console.log("unconsumed keypress:", event.key, event.code, event.keyCode);
+      console.log("unconsumed keypress:", event);
     }
     return;
   }
@@ -58,7 +56,7 @@ class Maria extends Game {
   }
 
   physics_tick(tick_size) {
-
+    this.main.physics_tick(tick_size);
   }
 }
 

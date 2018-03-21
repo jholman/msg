@@ -8,13 +8,9 @@ class Overlay {
     this.menu = new Menu({onLevelChange: config.onLevelChange});
   }
 
-  handleKeydown(event) {
-    var gotConsumed = this.menu.handleKeydown(event);
-    if (gotConsumed) {
-      return true;
-    } else {
-      return false;;
-    }
+  handleKey(event) {
+    var gotConsumed = this.menu.handleKey(event);
+    return gotConsumed;
   }
 
   render(context) {

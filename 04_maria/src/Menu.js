@@ -28,7 +28,8 @@ class Menu {
     this.stateIndexStack = [];
   }
 
-  handleKeydown(event) {
+  handleKey(event) {
+    if (event.type !== 'keydown') return false;
     var keyMapping = {
       Escape: () => { this.popMenuState(); },
       Enter: () => {

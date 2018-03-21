@@ -1,44 +1,22 @@
 import * as jf from './frame/Frame';
+import Avatar from './Avatar';
 
 @jf.autobind
 class LevelBoard {
   constructor(config) {
-    // console.log(jf);
     this.levelData = config.levelData;
-    this.avatarData = {
-      box: new jf.Geom.Aabb({
-        left: -30,
-        right: 30,
-        top: 80,
-        bottom: 0,
-      }),
+    this.avatar = new Avatar({
       loc: {
         x: config.levelData.avatar_start.x,
         y: config.levelData.avatar_start.y,
       },
-      vel: {
-        x: 0,
-        y: 0,
-      },
-    }
-
-    this.report = false;
+      level: this,
+    });
   }
 
-  handleKeydown(event) {
-    var keyMapping = {
-      KeyI: () => { this.avatarData.loc.y += 50 },
-      KeyJ: () => { this.avatarData.loc.x -= 50 },
-      KeyK: () => { this.avatarData.loc.y -= 50 },
-      KeyL: () => { this.avatarData.loc.x += 50 },
-    };
-    if (keyMapping[event.code]) {
-      keyMapping[event.code]();
-//      console.log(this.avatarData.loc);
-//      this.report = true;
-      return true;
-    }
-    return false;
+  handleKey(event) {
+    var gotConsumed = this.avatar.handleKey(event);
+    return gotConsumed;
   }
 
   render(context) {
@@ -53,16 +31,11 @@ class LevelBoard {
     context.fillRect(0, 0, c_width, c_height);
 
     var viewport = new jf.Geom.Aabb({
-      left: jf.clamp(0, this.avatarData.loc.x - viewport_offset_x, this.levelData.width - context.canvas.width),
-      bottom: jf.clamp(0, this.avatarData.loc.y - viewport_offset_y, this.levelData.height - context.canvas.height),
+      left: jf.clamp(0, this.avatar.loc.x - viewport_offset_x, this.levelData.width - context.canvas.width),
+      bottom: jf.clamp(0, this.avatar.loc.y - viewport_offset_y, this.levelData.height - context.canvas.height),
       width: c_width,
       height: c_height,
     });
-
-//    if (this.report) {
-//      console.log("viewport:", JSON.stringify(viewport) );
-//      console.log("avatar top:",  c_height - (this.avatarData.loc.y + this.avatarData.box.top - viewport.bottom));
-//    }
 
     // draw the static parts of the level
     for (var block of this.levelData.blocks) {
@@ -78,16 +51,15 @@ class LevelBoard {
       }
     }
 
-    // draw the player (as a black box)
-    context.fillStyle = 'black';
-    context.fillRect( 
-        this.avatarData.loc.x + this.avatarData.box.left - viewport.left,
-        c_height - (this.avatarData.loc.y + this.avatarData.box.top - viewport.bottom),
-        this.avatarData.box.width,
-        this.avatarData.box.height
-    );
 
-    this.report = false;
+    this.avatar.render(context, {x: -viewport.left, y: -viewport.bottom});
+
+  }
+
+
+
+  physics_tick(tick_size) {
+    this.avatar.physics_tick(tick_size);
   }
 }
 

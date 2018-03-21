@@ -104,7 +104,7 @@ class Game {
     const maxTicksAtOnce = 50;
     if ((now - this.bookkeeping.previousTick_ms) > (maxTicksAtOnce * this.config.physics.tickSize_ms)) {
 
-      console.error("skipping some tick-time to avoid lockup");
+      console.warn("skipping some tick-time to avoid lockup");
       this.bookkeeping.previousTick_ms = now - (maxTicksAtOnce * this.config.physics.tickSize_ms);
     }
     while ((now - this.bookkeeping.previousTick_ms) > this.config.physics.tickSize_ms) {
@@ -113,10 +113,22 @@ class Game {
     }
   }
 
+  _handleMouse(event) {
+    // TODO: cache mouse coordinates, for various use
+    this.handleMouse(event);
+  }
+  _handleKey(event) {
+    if ( {J:1, I:1}[event.key] && event.ctrlKey ) return;                       // so that dev tool hotkeys still work and have priority
+    // TODO: attach mouse coordinates to event
+    this.handleKey(event);
+  }
+
+
+
   render() {}                       /* abstract method for child-classes to override */
   physics_tick(tick_size) {}        /* abstract method for child-classes to override */
-  handleKeydown(event) {}           /* abstract method for child-classes to override */
-
+  handleMouse(event) {}             /* abstract method for child-classes to override */
+  handleKey(event) {}               /* abstract method for child-classes to override */
 
   start() {
     this.bookkeeping = {
@@ -124,17 +136,17 @@ class Game {
     }
     // TODO: maybe fullscreen?  Maybe a button to fullscreen?  element.requestFullscreen and friends.
 
-    //this.context.canvas.setAttribute("tabindex", 1);  // to enable focus and thus keydown listening
-    //this.context.canvas.addEventListener('keydown', this.handleKeydown);
-    //this.context.canvas.addEventListener('focus', ()=>{console.log("sure");});
-    document.addEventListener('keydown', this.handleKeydown);
+    // TODO: add mouse listener to suitable events, I guess?
+    document.addEventListener('keydown', this._handleKey);
+    document.addEventListener('keyup', this._handleKey);
     requestAnimationFrame(this._render);
   }
 
   shutdown() {
     // TODO: this shit.
     // this._render = () => {};     // TODO: surely there's something better possible
-    document.removeEventListener('keydown', this.handleKeydown);
+    document.removeEventListener('keydown', this._handleKey);
+    document.removeEventListener('keyup', this._handleKey);
   }
 }
 
